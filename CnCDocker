@@ -6,13 +6,12 @@ import json
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-
+from log_monitor import tail_log_file, stop_log_event
 
 SETTINGS_FILE = "settings.json"
 
 DEFAULT_PATH = r"C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered"
 
-log_thread_running = False
 
 def get_log_file_path():
     """Return the path to the log file based on saved cnc_path."""
@@ -20,17 +19,14 @@ def get_log_file_path():
 
 
 def validate_cnc_path():
-    """
-    Check whether the selected C&C install folder contains a valid log file.
-    Returns True if valid, False otherwise.
-    """
+    """Check whether the selected C&C folder contains a valid log file."""
     logfile = get_log_file_path()
 
     if not os.path.exists(logfile):
         messagebox.showwarning(
             "Log File Not Found",
             f"Could not find:\n{logfile}\n\n"
-            "Please make sure your Command & Conquer installation folder is correct."
+            "Please confirm your Command & Conquer installation folder."
         )
         return False
 
@@ -38,17 +34,12 @@ def validate_cnc_path():
 
 
 def extract_steam_id():
-    """
-    Extract SteamID from the log file.
-    Returns the SteamID as a string, or None if not found.
-    """
+    """Extract SteamID from log file."""
     logfile = get_log_file_path()
 
     try:
         with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
-                # Match lines like:
-                # SteamClass::Dump_Steam_State -- SteamUser: 07C20240, ID: 76561198170603679, Sub: 1, ...
                 match = re.search(r"ID:\s*(\d{17})", line)
                 if match:
                     return match.group(1)
@@ -59,8 +50,9 @@ def extract_steam_id():
 
     return None
 
+
 def load_settings():
-    """Load settings from disk or create defaults."""
+    """Load settings or create defaults."""
     if not os.path.exists(SETTINGS_FILE):
         settings = {"cnc_path": DEFAULT_PATH}
         save_settings(settings)
@@ -71,43 +63,12 @@ def load_settings():
 
 
 def save_settings(settings):
-    """Save settings to disk."""
     with open(SETTINGS_FILE, "w") as f:
         json.dump(settings, f, indent=4)
 
-def tail_log_file():
-    """
-    Continuously watch the log and print only new lines to the console.
-    Stops automatically when log_thread_running becomes False.
-    """
-    global log_thread_running
-    logfile = get_log_file_path()
-
-    # Open the log file and seek to the end
-    try:
-        with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
-            f.seek(0, os.SEEK_END)  # start at end of file
-            last_line = None
-
-            while log_thread_running:
-                line = f.readline()
-
-                if not line:
-                    time.sleep(0.1)
-                    continue
-
-                line = line.rstrip("\n")
-
-                # Only print new unique lines
-                if line != last_line:
-                    print(line)
-                    last_line = line
-    except Exception as e:
-        print("Error tailing log:", e)
-
 
 def select_cnc_path():
-    """Prompt user to choose their C&C game folder."""
+    """Prompt user to choose their C&C folder."""
     folder = filedialog.askdirectory(
         title="Select Command & Conquer Installation Folder",
         initialdir=settings["cnc_path"]
@@ -120,8 +81,7 @@ def select_cnc_path():
 
 
 def on_run():
-    global log_thread_running
-
+    """Start log monitoring thread."""
     if not validate_cnc_path():
         return
 
@@ -131,30 +91,35 @@ def on_run():
     else:
         print("WARNING: Steam ID not found in log yet.")
 
-    # Start log tailing thread
-    if not log_thread_running:
-        log_thread_running = True
-        t = threading.Thread(target=tail_log_file, daemon=True)
-        t.start()
+    logfile_path = get_log_file_path()
 
-    print("Log monitoring started...\n")
+    stop_log_event.clear()
+    print("Log monitoring started...")
+
+    thread = threading.Thread(
+        target=tail_log_file,
+        args=(logfile_path,),
+        daemon=True
+    )
+    thread.start()
+
+    print("Log thread running.\n")
+
 
 def on_stop():
-    global log_thread_running
-    log_thread_running = False
-    print("Log monitoring stopped.\n")
+    print("Stopping log monitor...")
+    stop_log_event.set()
 
 
 # Load settings on startup
 settings = load_settings()
 
-# GUI setup
+# GUI
 root = tk.Tk()
 root.title("CnC Docker Controller")
 root.geometry("300x200")
 root.resizable(False, False)
 
-# Buttons
 btn_run = tk.Button(root, text="Run", width=20, command=on_run)
 btn_run.pack(pady=10)
 
@@ -164,5 +129,4 @@ btn_stop.pack(pady=10)
 btn_update = tk.Button(root, text="Update C&C Path", width=20, command=select_cnc_path)
 btn_update.pack(pady=10)
 
-# Start GUI loop
 root.mainloop()
