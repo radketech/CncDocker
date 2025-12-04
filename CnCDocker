@@ -3,14 +3,24 @@ import time
 import re
 import os
 import json
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from log_monitor import tail_log_file, stop_log_event
+from generate_overlay import generate_placeholder_overlay
 
 SETTINGS_FILE = "settings.json"
 
 DEFAULT_PATH = r"C:\Program Files (x86)\Steam\steamapps\common\CnCRemastered"
+
+# Get the directory where the executable/script is running from
+if getattr(sys, 'frozen', False):
+    # Running as compiled .exe
+    PROGRAM_DIR = os.path.dirname(sys.executable)
+else:
+    # Running as Python script
+    PROGRAM_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_log_file_path():
@@ -81,7 +91,7 @@ def select_cnc_path():
 
 
 def on_run():
-    """Start log monitoring thread."""
+    """Start log monitoring thread and create placeholder overlay."""
     if not validate_cnc_path():
         return
 
@@ -93,17 +103,29 @@ def on_run():
 
     logfile_path = get_log_file_path()
 
+    # Generate placeholder overlay in the program directory so user can add it to OBS before playing
+    try:
+        placeholder_path = generate_placeholder_overlay(output_dir=PROGRAM_DIR)
+        if placeholder_path:
+            messagebox.showinfo(
+                "Overlay Ready",
+                f"Placeholder overlay created:\n\n{placeholder_path}\n\n"
+                "Add this file as a Browser source in OBS, then start playing!"
+            )
+    except Exception as e:
+        print(f"ERROR creating placeholder: {e}")
+
     stop_log_event.clear()
     print("Log monitoring started...")
 
     thread = threading.Thread(
         target=tail_log_file,
-        args=(logfile_path,),
+        args=(logfile_path, PROGRAM_DIR),
         daemon=True
     )
     thread.start()
 
-    print("Log thread running.cl\n")
+    print("Log thread running.\n")
 
 
 def on_stop():

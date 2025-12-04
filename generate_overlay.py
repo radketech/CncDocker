@@ -6,7 +6,64 @@ Decodes octal escape sequences in player names.
 import os
 import html
 import re
+import sys
+import urllib.parse
 from datetime import datetime
+
+
+def generate_placeholder_overlay(output_dir=None, html_name="match_info.html"):
+    """
+    Generate a placeholder overlay HTML file while waiting for a match.
+    This allows users to add the file to OBS before starting to play.
+    
+    Args:
+        output_dir (str): Output directory. Defaults to module directory.
+        html_name (str): Output HTML filename.
+    
+    Returns:
+        str: Path to generated HTML file, or None on error.
+    """
+    if output_dir is None:
+        output_dir = os.path.dirname(__file__)
+
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except Exception:
+        pass
+
+    html_content = f"""<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Match Overlay</title>
+    <style>
+        /* Futuristic / modern styles */
+        html, body {{ height:100%; background: transparent !important; }}
+        body {{ margin:0; padding:0; font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent !important; color: #e6f0ff; }}
+        /* Removed opaque outer background to ensure OBS transparency works (Streamlabs/CEF) */
+        .wrap {{ padding: 18px; box-sizing: border-box; background: transparent; border-radius: 0; backdrop-filter: none; width: 420px; }}
+        .placeholder {{ font-size: 24px; font-weight: 800; color: #9ff0ff; text-align: center; letter-spacing: 0.6px; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 12px rgba(0,0,0,0.6); }}
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="placeholder">⏳ Waiting for match...</div>
+    </div>
+</body>
+</html>
+"""
+
+    html_path = os.path.join(output_dir, html_name)
+
+    try:
+        with open(html_path, 'w', encoding='utf-8') as hf:
+            hf.write(html_content)
+        print(f"Placeholder overlay created: {os.path.abspath(html_path)}")
+        return html_path
+    except Exception as e:
+        print(f"ERROR writing placeholder overlay: {e}")
+        return None
 
 
 def decode_octal_escapes(s):
@@ -31,6 +88,75 @@ def decode_octal_escapes(s):
     except Exception as e:
         print(f"Warning: Failed to decode octal in '{s}': {e}")
         return s
+
+
+def _get_resource_dir():
+    """Return the directory where bundled resources live.
+
+    When running under PyInstaller one-file, resources are unpacked into
+    sys._MEIPASS. Otherwise use the module directory.
+    """
+    try:
+        return getattr(sys, '_MEIPASS')
+    except Exception:
+        return os.path.dirname(__file__)
+
+
+def _flag_to_data_uri(flag_filename, output_dir=None):
+    """Return a data URI for the given SVG flag, or fallback to a file:// URL.
+
+    The function tries these locations in order:
+    - bundled resource directory (PyInstaller _MEIPASS or module dir)/Flags/<flag_filename>
+    - output_dir/Flags/<flag_filename>
+    If a file is found, it's URL-encoded and returned as a data:image/svg+xml URI to
+    avoid CEF/OBS local-file access quirks.
+    """
+    if not flag_filename:
+        return None
+
+    locations = []
+    # resource dir (handles PyInstaller)
+    res_dir = _get_resource_dir()
+    locations.append(os.path.join(res_dir, 'Flags', flag_filename))
+    # output_dir (where HTML is written)
+    if output_dir:
+        locations.append(os.path.join(output_dir, 'Flags', flag_filename))
+    # fallback to project-relative
+    locations.append(os.path.join(os.path.dirname(__file__), 'Flags', flag_filename))
+
+    for p in locations:
+        try:
+            if os.path.exists(p):
+                # Read SVG and produce a data URI
+                with open(p, 'rb') as fh:
+                    data = fh.read()
+                try:
+                    text = data.decode('utf-8')
+                except Exception:
+                    # If decoding fails, base64-encode instead
+                    import base64
+                    b64 = base64.b64encode(data).decode('ascii')
+                    return f'data:image/svg+xml;base64,{b64}'
+
+                # URL-encode the SVG text for safe inclusion
+                svg_escaped = urllib.parse.quote(text)
+                return f'data:image/svg+xml;utf8,{svg_escaped}'
+        except Exception:
+            continue
+
+    # If none found, try a best-effort absolute file:// path using output_dir or module dir
+    fallback = None
+    try:
+        fallback_path = os.path.abspath(os.path.join(output_dir or os.path.dirname(__file__), 'Flags', flag_filename))
+        fallback_url = fallback_path.replace('\\', '/')
+        if os.name == 'nt':
+            fallback = f'file:///{fallback_url}'
+        else:
+            fallback = f'file://{fallback_url}'
+    except Exception:
+        fallback = None
+
+    return fallback
 
 
 def generate_match_webpage(players_info, map_name, output_dir=None, refresh_interval=5,
@@ -200,7 +326,6 @@ def generate_match_webpage(players_info, map_name, output_dir=None, refresh_inte
                 start_label = get_position_label(str(map_name), start_int)
             else:
                 start_label = str(start)
-
             # Only show start position in the left meta; faction is represented by the flag image
             left_meta = f"Start: {html.escape(str(start_label))}"
             # Determine flag path, if available
@@ -215,11 +340,17 @@ def generate_match_webpage(players_info, map_name, output_dir=None, refresh_inte
 
             flag_html = ""
             if flag_filename:
-                # Use a relative path to the Flags folder (assumes HTML is in project root)
-                flag_path = os.path.join("Flags", flag_filename).replace('\\', '/')
-                flag_html = f"<img class=\"flag\" src=\"{flag_path}\" alt=\"flag\">"
-                # render player block with left column (name + meta) and right column (elo)
-                player_html += f"""
+                # Prefer embedding the SVG as a data URI so OBS/CEF can render it
+                flag_src = _flag_to_data_uri(flag_filename, output_dir=output_dir)
+                if flag_src:
+                    flag_html = f"<img class=\"flag\" src=\"{flag_src}\" alt=\"flag\">"
+                else:
+                    # Last-resort: use a relative path
+                    flag_path = os.path.join("Flags", flag_filename).replace('\\', '/')
+                    flag_html = f"<img class=\"flag\" src=\"{flag_path}\" alt=\"flag\">"
+
+            # render player block with left column (name + meta) and right column (elo)
+            player_html += f"""
             <div class="player">
                 {flag_html}
                 <div class="player-left">
@@ -264,8 +395,9 @@ def generate_match_webpage(players_info, map_name, output_dir=None, refresh_inte
     <title>Match Overlay</title>
     <style>
         /* Futuristic / modern styles */
-        body {{ font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent; color: #e6f0ff; }}
-        .wrap {{ padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; backdrop-filter: blur(6px); }}
+        html, body {{ height:100%; background: transparent !important; }}
+        body {{ margin:0; padding:0; font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent !important; color: #e6f0ff; }}
+        .wrap {{ padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; }}
         .map {{ font-size: 30px; font-weight: 900; color: #9ff0ff; margin: 0 0 12px 0; letter-spacing: 0.6px; text-align: center; /* center the map title */
              /* darker outline using multiple shadows for better contrast */
              text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 12px rgba(0,0,0,0.6); }}

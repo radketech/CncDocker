@@ -7,8 +7,9 @@
     <title>Match Overlay</title>
     <style>
         /* Futuristic / modern styles */
-        body { font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent; color: #e6f0ff; }
-        .wrap { padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; backdrop-filter: blur(6px); }
+        html, body { height:100%; background: transparent !important; }
+        body { margin:0; padding:0; font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent !important; color: #e6f0ff; }
+        .wrap { padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; }
         .map { font-size: 30px; font-weight: 900; color: #9ff0ff; margin: 0 0 12px 0; letter-spacing: 0.6px; text-align: center; /* center the map title */
              /* darker outline using multiple shadows for better contrast */
              text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 12px rgba(0,0,0,0.6); }
@@ -26,38 +27,30 @@
     </style>
 </head>
 <body>
-    <div class="wrap" style="width:1100px;">
-        <div class="map">North by Northwest</div>
+    <div class="wrap" style="width:828px;">
+        <div class="map">Bullseye</div>
         <div class="players">
             <div class="player">
-                <img class="flag" src="Flags/su.svg" alt="flag">
+                <img class="flag" src="data:image/svg+xml;utf8,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%20standalone%3D%22no%22%3F%3E%0A%3Csvg%0A%20%20%20xmlns%3Adc%3D%22http%3A//purl.org/dc/elements/1.1/%22%0A%20%20%20xmlns%3Acc%3D%22http%3A//creativecommons.org/ns%23%22%0A%20%20%20xmlns%3Ardf%3D%22http%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%22%0A%20%20%20xmlns%3Asvg%3D%22http%3A//www.w3.org/2000/svg%22%0A%20%20%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%0A%20%20%20version%3D%221.1%22%0A%20%20%20width%3D%221200%22%0A%20%20%20height%3D%22600%22%0A%20%20%20id%3D%22svg10%22%3E%0A%20%20%3Cmetadata%0A%20%20%20%20%20id%3D%22metadata16%22%3E%0A%20%20%20%20%3Crdf%3ARDF%3E%0A%20%20%20%20%20%20%3Ccc%3AWork%0A%20%20%20%20%20%20%20%20%20rdf%3Aabout%3D%22%22%3E%0A%20%20%20%20%20%20%20%20%3Cdc%3Aformat%3Eimage/svg%2Bxml%3C/dc%3Aformat%3E%0A%20%20%20%20%20%20%20%20%3Cdc%3Atype%0A%20%20%20%20%20%20%20%20%20%20%20rdf%3Aresource%3D%22http%3A//purl.org/dc/dcmitype/StillImage%22%20/%3E%0A%20%20%20%20%20%20%20%20%3Cdc%3Atitle%3E%3C/dc%3Atitle%3E%0A%20%20%20%20%20%20%3C/cc%3AWork%3E%0A%20%20%20%20%3C/rdf%3ARDF%3E%0A%20%20%3C/metadata%3E%0A%20%20%3Cdefs%0A%20%20%20%20%20id%3D%22defs14%22%20/%3E%0A%20%20%3Cpath%0A%20%20%20%20%20fill%3D%22%23bc0000%22%0A%20%20%20%20%20fill-opacity%3D%221%22%0A%20%20%20%20%20d%3D%22M0%200h1200v600H0z%22%0A%20%20%20%20%20id%3D%22path2%22%0A%20%20%20%20%20style%3D%22fill%3A%23cc0000%3Bfill-opacity%3A1%22%20/%3E%0A%20%20%3Cpath%0A%20%20%20%20%20id%3D%22path11728%22%0A%20%20%20%20%20d%3D%22m%20200.0005%2C37.5%20-8.41933%2C25.911886%20H%20164.336%20L%20186.37777%2C79.426122%20177.95844%2C105.338%20200.0005%2C89.323465%20222.04257%2C105.338%20213.62324%2C79.426122%20235.665%2C63.411886%20h%20-27.24516%20z%20m%200%2C13.499987%205.38828%2C16.583473%20h%2017.43718%20l%20-14.107%2C10.249496%205.38827%2C16.583472%20L%20200.0005%2C84.167224%20185.89378%2C94.416428%20191.28205%2C77.832956%20177.17504%2C67.58346%20h%2017.43718%20z%22%0A%20%20%20%20%20style%3D%22fill%3A%23ffd700%3Bfill-opacity%3A1%3Bstroke%3Anone%3Bstroke-width%3A0.14999977px%3Bstroke-linecap%3Abutt%3Bstroke-linejoin%3Amiter%3Bstroke-opacity%3A1%22%20/%3E%0A%20%20%3Cg%0A%20%20%20%20%20style%3D%22fill%3A%23ffd700%3Bfill-opacity%3A1%22%0A%20%20%20%20%20id%3D%22g2900%22%0A%20%20%20%20%20transform%3D%22matrix%280.98931879%2C0%2C0%2C0.98673811%2C3.8297658%2C3.7659398%29%22%3E%0A%20%20%20%20%3Cpath%0A%20%20%20%20%20%20%20id%3D%22rect4165-6%22%0A%20%20%20%20%20%20%20d%3D%22m%20137.43744%2C171.69421%2018.86296%2C18.9937%2017.78834%2C-17.66589%20c%2027.05847%2C29.021%2055.43807%2C56.99501%2082.28704%2C86.12782%204.03444%2C4.06233%2010.59815%2C4.085%2014.66056%2C0.0506%204.06232%2C-4.03445%204.08499%2C-10.59815%200.0506%2C-14.66056%20-28.81871%2C-27.1901%20-57.72545%2C-54.60143%20-86.55328%2C-81.89095%20l%2023.96499%2C-23.80003%20-33.34026%2C-4.61605%20z%22%0A%20%20%20%20%20%20%20style%3D%22fill%3A%23ffd700%3Bfill-opacity%3A1%3Bstroke%3Anone%3Bstroke-width%3A0.48919073%3Bstroke-miterlimit%3A4%3Bstroke-dasharray%3Anone%3Bstroke-dashoffset%3A0%3Bstroke-opacity%3A1%22%20/%3E%0A%20%20%20%20%3Cpath%0A%20%20%20%20%20%20%20id%3D%22path4179-3%22%0A%20%20%20%20%20%20%20d%3D%22m%20198.2887%2C110.1955%20c%2015.51743%2C8.7394%2027.29872%2C21.28122%2034.2484%2C34.3924%207.04394%2C13.28902%2010.13959%2C27.16218%2010.20325%2C38.25433%200.13054%2C22.74374%20-18.43771%2C41.18184%20-41.18183%2C41.18184%20-12.13597%2C0%20-23.04607%2C-5.24868%20-30.58302%2C-13.60085%20l%20-4.16863%2C3.51033%20c%20-0.70999%2C-0.27231%20-1.46387%2C-0.41221%20-2.22429%2C-0.41276%20-1.82948%2C1.9e-4%20-3.56621%2C0.80531%20-4.74859%2C2.20136%20-2.97368%2C0.38896%20-5.46251%2C2.44529%20-6.40534%2C5.29224%20-3.13486%2C6.28843%20-8.63524%2C11.21997%20-15.29104%2C13.4776%20-0.0637%2C0.0216%20-0.11992%2C0.05%20-0.1758%2C0.0783%20-3.07749%2C1.12758%20-6.16259%2C3.1643%20-8.78919%2C5.80245%20-5.19155%2C5.23656%20-7.72858%2C11.93658%20-6.30024%2C16.63822%20-0.14098%2C0.40857%20-0.21361%2C0.83759%20-0.21498%2C1.26979%201.5e-4%2C2.17082%201.75991%2C3.93058%203.93073%2C3.93073%200.54341%2C-0.002%201.08053%2C-0.11639%201.57745%2C-0.33632%204.69369%2C1.05881%2011.06885%2C-1.54582%2016.05444%2C-6.55917%202.82624%2C-2.85072%204.94356%2C-6.22349%205.98303%2C-9.53062%202.31696%2C-6.62278%207.29699%2C-12.01856%2013.62281%2C-15.05312%200.15105%2C-0.0725%200.27303%2C-0.14714%200.38218%2C-0.22358%202.12082%2C-1.01408%203.67251%2C-2.92895%204.225%2C-5.2139%209.70222%2C11.44481%2024.25255%2C18.75299%2040.51876%2C19.13577%2029.83352%2C0.70205%2052.13299%2C-21.25802%2053.16414%2C-52.83642%200.51894%2C-15.89259%20-5.62993%2C-36.3847%20-19.6412%2C-53.19089%20-10.70835%2C-12.84441%20-26.40987%2C-23.50795%20-44.18699%2C-28.20777%20z%22%0A%20%20%20%20%20%20%20style%3D%22fill%3A%23ffd700%3Bfill-opacity%3A1%3Bstroke%3Anone%3Bstroke-width%3A0.50003481%3Bstroke-miterlimit%3A4%3Bstroke-dasharray%3Anone%3Bstroke-dashoffset%3A0%3Bstroke-opacity%3A1%22%20/%3E%0A%20%20%3C/g%3E%0A%3C/svg%3E%0A" alt="flag">
                 <div class="player-left">
-                    <div class="name-box" style="border-color:#00FFFF;">Player A</div>
-                    <div class="meta"><div class="left">Start: Top Right</div><div class="elo">1800</div></div>
+                    <div class="name-box" style="border-color:#FFFF00;">AlphaA</div>
+                    <div class="meta"><div class="left">Start: Top Right</div><div class="elo">1523</div></div>
                 </div>
             </div>
 
             <div class="player">
-                <img class="flag" src="Flags/ua.svg" alt="flag">
+                <img class="flag" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%203%202%22%3E%3Cpath%20fill%3D%22%230057B7%22%20d%3D%22M0%200h3v2H0z%22/%3E%3Cpath%20fill%3D%22gold%22%20d%3D%22M0%201h3v1H0z%22/%3E%3C/svg%3E" alt="flag">
                 <div class="player-left">
-                    <div class="name-box" style="border-color:#FF3333;">Player B</div>
-                    <div class="meta"><div class="left">Start: Right Top</div><div class="elo">1750</div></div>
+                    <div class="name-box" style="border-color:#FF3333;">Bravo</div>
+                    <div class="meta"><div class="left">Start: Bot Left</div><div class="elo">1689</div></div>
                 </div>
             </div>
 
             <div class="player">
-                <img class="flag" src="Flags/tr.svg" alt="flag">
+                <img class="flag" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2012%208%22%3E%3Cpath%20fill%3D%22%23E30A17%22%20d%3D%22M0%200h12v8H0z%22/%3E%3Ccircle%20cx%3D%224.25%22%20cy%3D%224%22%20r%3D%222%22%20fill%3D%22%23fff%22/%3E%3Ccircle%20cx%3D%224.75%22%20cy%3D%224%22%20r%3D%221.6%22%20fill%3D%22%23e30a17%22/%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M5.83334%204l1.80901%20.58779-1.11804-1.53885v1.90212l1.11804-1.53885z%22/%3E%3C/svg%3E" alt="flag">
                 <div class="player-left">
-                    <div class="name-box" style="border-color:#00FF00;">Player C</div>
-                    <div class="meta"><div class="left">Start: Right Bot</div><div class="elo">1500</div></div>
-                </div>
-            </div>
-
-            <div class="player">
-                <img class="flag" src="Flags/es.svg" alt="flag">
-                <div class="player-left">
-                    <div class="name-box" style="border-color:#FFA500;">Player D</div>
-                    <div class="meta"><div class="left">Start: Bot Right</div><div class="elo">1400</div></div>
+                    <div class="name-box" style="border-color:#3366FF;">CharlieWithAVeryLongNameThatGetsTruncated</div>
+                    <div class="meta"><div class="left">Start: 2</div><div class="elo">1400</div></div>
                 </div>
             </div>
 

@@ -66,7 +66,7 @@ def get_matches(session_id):
                 return None
 
 
-def tail_log_file(filepath):
+def tail_log_file(filepath, output_dir=None):
     print("DEBUG: tail_log_file started")
 
     search_text = "quickmatchfound"
@@ -137,7 +137,7 @@ def tail_log_file(filepath):
                                                         
                                                         # Generate webpage with player and map info
                                                         try:
-                                                            webpage_path = generate_match_webpage(players_info, map_name)
+                                                            webpage_path = generate_match_webpage(players_info, map_name, output_dir=output_dir)
                                                             print(f"Webpage generated: {webpage_path}")
                                                         except Exception as e:
                                                             print("ERROR generating webpage:", e)

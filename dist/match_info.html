@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="5">
+    <title>Match Overlay</title>
+    <style>
+        /* Futuristic / modern styles */
+        html, body { height:100%; background: transparent !important; }
+        body { margin:0; padding:0; font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent !important; color: #e6f0ff; }
+        .wrap { padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; }
+        .map { font-size: 30px; font-weight: 900; color: #9ff0ff; margin: 0 0 12px 0; letter-spacing: 0.6px; text-align: center; /* center the map title */
+             /* darker outline using multiple shadows for better contrast */
+             text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 12px rgba(0,0,0,0.6); }
+          /* Force player boxes to sit horizontally next to each other.
+              The outer container width is computed to fit the players, so
+              we don't need a horizontal scrollbar. */
+          .players { display: flex; gap: 12px; flex-wrap: nowrap; overflow: visible; }
+        .player { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 10px; border-radius: 10px; flex: 0 0 260px; display:flex; align-items:center; gap:10px; border:1px solid rgba(160,220,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.6); overflow: hidden; box-sizing: border-box; }
+        .flag { width:28px; height:18px; vertical-align:middle; margin-right:8px; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,0.6); }
+        .player-left { display:flex; flex-direction:column; flex:1; min-width:0 }
+        .name-box { display:inline-block; padding:8px 12px; border-radius:8px; font-weight:800; color:#fff; background:transparent; border:2px solid rgba(255,255,255,0.04); backdrop-filter: blur(2px); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .meta { margin-top:8px; font-size:13px; color:#cfd8e6; display:flex; justify-content:space-between; align-items:center }
+        .meta .left { font-size:13px; color:#cfd8e6; }
+        .meta .elo { font-size:20px; font-weight:900; color:#ffffff; padding:6px 10px; border-radius:8px; background:linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body>
+    <div class="wrap" style="width:556px;">
+        <div class="map">Arena Valley</div>
+        <div class="players">
+            <div class="player">
+                <img class="flag" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2060%2030%22%3E%3CclipPath%20id%3D%22a%22%3E%3Cpath%20d%3D%22M0%200v30h60V0z%22/%3E%3C/clipPath%3E%3CclipPath%20id%3D%22b%22%3E%3Cpath%20d%3D%22M30%2015h30v15zv15H0zH0V0zV0h30z%22/%3E%3C/clipPath%3E%3Cg%20clip-path%3D%22url%28%23a%29%22%3E%3Cpath%20d%3D%22M0%200v30h60V0z%22%20fill%3D%22%23012169%22/%3E%3Cpath%20d%3D%22M0%200l60%2030m0-30L0%2030%22%20stroke%3D%22%23fff%22%20stroke-width%3D%226%22/%3E%3Cpath%20d%3D%22M0%200l60%2030m0-30L0%2030%22%20clip-path%3D%22url%28%23b%29%22%20stroke%3D%22%23C8102E%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M30%200v30M0%2015h60%22%20stroke%3D%22%23fff%22%20stroke-width%3D%2210%22/%3E%3Cpath%20d%3D%22M30%200v30M0%2015h60%22%20stroke%3D%22%23C8102E%22%20stroke-width%3D%226%22/%3E%3C/g%3E%3C/svg%3E" alt="flag">
+                <div class="player-left">
+                    <div class="name-box" style="border-color:#00FFFF;">Greezdemboth</div>
+                    <div class="meta"><div class="left">Start: Bot Right</div><div class="elo">849</div></div>
+                </div>
+            </div>
+
+            <div class="player">
+                <img class="flag" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2060%2030%22%3E%3CclipPath%20id%3D%22a%22%3E%3Cpath%20d%3D%22M0%200v30h60V0z%22/%3E%3C/clipPath%3E%3CclipPath%20id%3D%22b%22%3E%3Cpath%20d%3D%22M30%2015h30v15zv15H0zH0V0zV0h30z%22/%3E%3C/clipPath%3E%3Cg%20clip-path%3D%22url%28%23a%29%22%3E%3Cpath%20d%3D%22M0%200v30h60V0z%22%20fill%3D%22%23012169%22/%3E%3Cpath%20d%3D%22M0%200l60%2030m0-30L0%2030%22%20stroke%3D%22%23fff%22%20stroke-width%3D%226%22/%3E%3Cpath%20d%3D%22M0%200l60%2030m0-30L0%2030%22%20clip-path%3D%22url%28%23b%29%22%20stroke%3D%22%23C8102E%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M30%200v30M0%2015h60%22%20stroke%3D%22%23fff%22%20stroke-width%3D%2210%22/%3E%3Cpath%20d%3D%22M30%200v30M0%2015h60%22%20stroke%3D%22%23C8102E%22%20stroke-width%3D%226%22/%3E%3C/g%3E%3C/svg%3E" alt="flag">
+                <div class="player-left">
+                    <div class="name-box" style="border-color:#FFFF00;">Balishag</div>
+                    <div class="meta"><div class="left">Start: Top Left</div><div class="elo">1088</div></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
