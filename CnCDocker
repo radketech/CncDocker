@@ -103,7 +103,7 @@ def on_run():
     )
     thread.start()
 
-    print("Log thread running.\n")
+    print("Log thread running.cl\n")
 
 
 def on_stop():

@@ -1,0 +1,22 @@
+{
+  "map_name": "MOBIUS_RED_ALERT_MULTIPLAYER_22_MAP",
+  "players": [
+    {
+      "name": "drhodge7",
+      "team": 1,
+      "elo": 884.4051796804403,
+      "color": 1,
+      "start_position": 0,
+      "steam_id": 2514667772
+    },
+    {
+      "name": "Balishag",
+      "team": 0,
+      "elo": 1023.3407123504633,
+      "color": 0,
+      "start_position": 1,
+      "steam_id": 76561198170603679
+    }
+  ],
+  "updated": "2025-12-04T00:33:30.361198Z"
+}

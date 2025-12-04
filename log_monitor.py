@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 import requests
+from generate_overlay import generate_match_webpage
 
 # Shared event imported into main script
 stop_log_event = threading.Event()
@@ -32,28 +33,37 @@ def get_matches(session_id):
 
     print("Executing PUT request in get_matches()...")
 
-    try:
-        response = requests.put(url, json=payload, headers=headers, timeout=10)
+    max_attempts = 3
+    retry_statuses = {400, 403, 500}
 
-        print("Status code:", response.status_code)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = requests.put(url, json=payload, headers=headers, timeout=10)
+            print(f"Attempt {attempt}: Status code: {response.status_code}")
 
-        # Retry logic for 400/403/500 like the original
-        if response.status_code in [400, 403, 500]:
-            print("Bad request, retrying in 10 seconds...")
-            time.sleep(10)
-            return get_matches(session_id)
+            if response.status_code in retry_statuses:
+                if attempt < max_attempts:
+                    print(f"Received {response.status_code}, retrying in 10 seconds...")
+                    time.sleep(10)
+                    continue
+                else:
+                    print(f"Received {response.status_code} on final attempt, giving up.")
+                    return None
 
-        # Print raw JSON body
-        print("HTTP Response Body:")
-        print(response.text)
+            # Successful-ish response; return body
+            print("HTTP Response Body:")
+            print(response.text)
+            return response.text
 
-        return response.text
-
-    except requests.exceptions.RequestException as e:
-        print("Network error:", e)
-        print("Retrying in 10 seconds...")
-        time.sleep(10)
-        return get_matches(session_id)
+        except requests.exceptions.RequestException as e:
+            print(f"Attempt {attempt}: Network error: {e}")
+            if attempt < max_attempts:
+                print("Retrying in 10 seconds...")
+                time.sleep(10)
+                continue
+            else:
+                print("Network error on final attempt, giving up.")
+                return None
 
 
 def tail_log_file(filepath):
@@ -70,6 +80,11 @@ def tail_log_file(filepath):
                 f.seek(0, os.SEEK_END)
                 file_size = f.tell()
 
+                # If logfile was truncated or rotated (size decreased), reset our read position
+                if file_size < last_position:
+                    print("DEBUG: logfile size decreased — resetting last_position to 0")
+                    last_position = 0
+
                 # If file grew, search from last position to end
                 if file_size > last_position:
                     f.seek(last_position)
@@ -83,10 +98,10 @@ def tail_log_file(filepath):
                         for line in reversed(lines):
                             if search_text.lower() in line.lower():
                                 print("MATCH:", line)
-                                match_id = parse_match_id_from_log(line)
-                                print(f"PARSED MATCH ID: {match_id}")
-                                if match_id:
-                                    print(f"SUCCESS: Found match ID {match_id}")
+                                map_name = parse_map_name_from_log(line)
+                                print(f"PARSED MAP NAME: {map_name}")
+                                if map_name:
+                                    print(f"SUCCESS: Found map name {map_name}")
                                     # Safely get last session ID and call API
                                     try:
                                         sessionID = get_last_session_id(filepath)
@@ -106,20 +121,26 @@ def tail_log_file(filepath):
                                                 try:
                                                     response = get_matches(sid_int)
                                                     print(f"API response: {response}")
+                                                    if response is None:
+                                                        print("WARNING: get_matches() failed after retries — skipping this match and continuing tail.")
+                                                        # Stop processing this matched line and continue scanning the logfile
+                                                        break
                                                 except Exception as e:
                                                     print("ERROR calling get_matches():", e)
                                                 else:
+                                                    steam_id = extract_steam_id(filepath)
                                                     # Then parse player info in its own try/except
                                                     try:
-                                                        time.sleep(5)
-                                                        # Extract first player's Steam ID from API response to find the match
-                                                        first_player_steam_id = get_first_player_steam_id(response)
-                                                        print(f"First player Steam ID: {first_player_steam_id}")
-                                                        if first_player_steam_id:
-                                                            players_info = get_match_player_info(response, first_player_steam_id)
-                                                            print(f"Players info: {players_info}")
-                                                        else:
-                                                            print("WARNING: Could not extract first player Steam ID from API response")
+                                                        time.sleep(1)
+                                                        players_info = get_match_player_info(response, steam_id)
+                                                        print(f"Players info: {players_info}")
+                                                        
+                                                        # Generate webpage with player and map info
+                                                        try:
+                                                            webpage_path = generate_match_webpage(players_info, map_name)
+                                                            print(f"Webpage generated: {webpage_path}")
+                                                        except Exception as e:
+                                                            print("ERROR generating webpage:", e)
                                                     except Exception as e:
                                                         print("ERROR parsing players info from API response:", e)
 
@@ -140,19 +161,18 @@ def tail_log_file(filepath):
 
     print("Log monitoring stopped.")
 
-def parse_match_id_from_log(line: str):
+def parse_map_name_from_log(line: str):
     """
-    Extracts the matchid value from a log line containing:
-    "matchid": 7253785
+    Extracts the mapname value from a log line containing:
+    "mapname": "MOBIUS_RED_ALERT_MULTIPLAYER_9_MAP"
 
     Returns:
-        int matchid, or None if not found.
+        str mapname, or None if not found.
     """
-
-    # Case-insensitive search for: "matchid": 1234567
-    match = re.search(r'"matchid"\s*:\s*(\d+)', line, re.IGNORECASE)
-    if match:
-        return int(match.group(1))
+    # Case-insensitive search for: "mapname": "..."
+    mapname_match = re.search(r'"mapname"\s*:\s*"([^"]+)"', line, re.IGNORECASE)
+    if mapname_match:
+        return mapname_match.group(1)  # Already a string
     return None
 
 def show_match_popup(matchdata):
@@ -202,47 +222,27 @@ def get_last_session_id(file_path):
     except Exception as e:
         print("Error reading sessionID:", e)
         return None
+    
+def get_match_player_info(json_response, player_id):
+    """
+    Parse the observer match list JSON and extract player info for the match containing a specific player_id.
 
-def get_first_player_steam_id(json_response):
-    """
-    Extract the first player's Steam ID from the API response.
-    
-    Args:
-        json_response (str or dict): JSON response from the API.
-    
-    Returns:
-        int: First player's Steam ID, or None if not found.
-    """
-    if isinstance(json_response, str):
-        try:
-            data = json.loads(json_response)
-        except json.JSONDecodeError as e:
-            print("ERROR: Failed to parse JSON in get_first_player_steam_id():", e)
-            return None
-    else:
-        data = json_response
-
-    matches = data.get("matches", [])
-    if matches:
-        first_match = matches[0]
-        players = first_match.get("players", [])
-        if players:
-            return players[0]
-    
-    return None
-    
-def get_match_player_info(json_response, first_player_steam_id):
-    """
-    Parse the observer match list JSON and extract player info for the match containing the given Steam ID.
+    This function searches the match's `players` array (steam IDs) rather than `names`.
 
     Args:
         json_response (str or dict): JSON response from the API.
-        first_player_steam_id (int): Steam ID of the first player to search for.
+        player_id (int or str): The player Steam ID to search for.
 
     Returns:
-        list of dict: Each dict contains 'name', 'team', 'elo', 'color', 'start_position', 'steam_id'
-                      Returns empty list if match not found.
+        list of dict: Each dict contains 'name', 'team', 'elo', 'color', 'start_position', 'steam_id'.
+                      Returns empty list if no match contains the player.
     """
+    # Normalize player_id to int where possible
+    try:
+        pid_int = int(player_id)
+    except Exception:
+        pid_int = None
+
     if isinstance(json_response, str):
         try:
             data = json.loads(json_response)
@@ -254,30 +254,68 @@ def get_match_player_info(json_response, first_player_steam_id):
 
     matches = data.get("matches", [])
     for match in matches:
-        # Check if the first player's Steam ID is in this match's players list
         players = match.get("players", [])
-        if first_player_steam_id in players:
-            players_info = []
+        # Normalize players list to ints where possible
+        norm_players = []
+        for p in players:
+            try:
+                norm_players.append(int(p))
+            except Exception:
+                # keep as-is if cannot convert
+                norm_players.append(p)
+
+        # Debug: show players list for this match (comment out if noisy)
+        # print("DEBUG: match players:", norm_players)
+
+        found = False
+        if pid_int is not None:
+            found = pid_int in norm_players
+        else:
+            # fallback: string compare
+            found = str(player_id) in [str(x) for x in norm_players]
+
+        if found:
             names = match.get("names", [])
             teams = match.get("teams", [])
             elos = match.get("elos", [])
+            factions = match.get("factions", [])
             colors = match.get("colors", [])
-            # Start positions are derived from player index in the match
             start_positions = list(range(len(names)))
 
+            players_info = []
             for i in range(len(names)):
+                steam_val = None
+                if i < len(norm_players):
+                    steam_val = norm_players[i]
                 players_info.append({
                     "name": names[i],
                     "team": teams[i] if i < len(teams) else None,
                     "elo": elos[i] if i < len(elos) else None,
                     "color": colors[i] if i < len(colors) else None,
+                    "faction": factions[i] if i < len(factions) else None,
                     "start_position": start_positions[i],
-                    "steam_id": players[i] if i < len(players) else None
+                    "steam_id": steam_val
                 })
 
             return players_info
 
-    return []  # No match found
+    return []  # No match found with that player
+
+
+def extract_steam_id(logfile):
+    """Extract SteamID from log file."""
+    try:
+        with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                match = re.search(r"ID:\s*(\d{17})", line)
+                if match:
+                    return match.group(1)
+
+    except Exception as e:
+        messagebox.showerror("Error Reading Log File", str(e))
+        return None
+
+    return None
 
 if __name__ == "__main__":
     # Example usage (runs only when executed directly)

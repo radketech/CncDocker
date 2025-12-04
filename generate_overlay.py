@@ -1,0 +1,304 @@
+"""
+Module to generate a static HTML overlay with meta-refresh.
+Decodes octal escape sequences in player names.
+"""
+
+import os
+import html
+import re
+from datetime import datetime
+
+
+def decode_octal_escapes(s):
+    """
+    Decode octal escape sequences like \\314\\265 to their UTF-8 characters.
+    
+    Example: "/\\314\\265\\315\\207..." -> actual Unicode text
+    """
+    if not s:
+        return s
+    
+    try:
+        # Replace octal sequences \nnn with their byte values
+        def octal_to_byte(match):
+            octal_str = match.group(1)
+            byte_val = int(octal_str, 8)
+            return chr(byte_val)
+        
+        # Match backslash followed by 1-3 octal digits
+        decoded = re.sub(r'\\(\d{1,3})', octal_to_byte, s)
+        return decoded
+    except Exception as e:
+        print(f"Warning: Failed to decode octal in '{s}': {e}")
+        return s
+
+
+def generate_match_webpage(players_info, map_name, output_dir=None, refresh_interval=5,
+                           html_name="match_info.html"):
+    """
+    Generate a static HTML overlay with meta-refresh.
+    
+    Args:
+        players_info (list): List of dicts with keys: 'name', 'elo', 'start_position', 'color', etc.
+        map_name (str): Map name string.
+        output_dir (str): Output directory. Defaults to module directory.
+        refresh_interval (int): Page refresh interval in seconds. Default 5.
+        html_name (str): Output HTML filename.
+    
+    Returns:
+        str: Path to generated HTML file, or None on error.
+    """
+    if output_dir is None:
+        output_dir = os.path.dirname(__file__)
+
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except Exception:
+        pass
+
+    color_map = {
+        0: "#FFFF00",
+        1: "#00FFFF",
+        2: "#FF3333",
+        3: "#00FF00",
+        4: "#FFA500",
+        5: "#3366FF",
+        6: "#800080",
+        7: "#FF69B4",
+    }
+
+    # Map faction numbers to flag filenames in the Flags/ directory
+    flag_map = {
+        4: "su.svg",
+        6: "ua.svg",
+        1: "tr.svg",
+        8: "fr.svg",
+        7: "de.svg",
+        3: "gr.svg",
+        2: "es.svg",
+        5: "gb.svg",
+    }
+
+    # (safe_map will be derived from the friendly mapping below; do not expose raw map keys)
+
+    # Map-specific display names and start-position labels
+    map_position_mappings = {
+        "MOBIUS_RED_ALERT_MULTIPLAYER_123_MAP": {
+            "display": "Bullseye",
+            "positions": {
+                0: "Top Right",
+                1: "Bot Left",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_COMMUNITY_2_MAP": {
+            "display": "Tournament Arena",
+            "positions": {
+                0: "Top Left",
+                1: "Bot Right",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_22_MAP": {
+            "display": "Path Beyond",
+            "positions": {                
+                0: "Bot Right",
+                1: "Top Left",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_COMMUNITY_3_MAP": {
+            "display": "Ore Rift",
+            "positions": {
+                0: "Left",
+                1: "Right",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_5_MAP": {
+            "display": "Keep Off the Grass",
+            "positions": {
+                0: "Top Left",
+                1: "Bot Right",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_COMMUNITY_1_MAP": {
+            "display": "Canyon",
+            "positions": {
+                0: "Top Right",
+                1: "Bot Left",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_K0_MAP": {
+            "display": "Arena Valley",
+            "positions": {
+                0: "Bot Right",
+                1: "Top Left",
+            }
+        },
+        "MOBIUS_RED_ALERT_MULTIPLAYER_9_MAP": {
+            "display": "North by Northwest",
+            "positions": {
+                0: "Top Right",
+                1: "Right Top",
+                2: "Right Bot",
+                3: "Bot Right",
+                4: "Bot Left",
+                5: "Left Bot",
+                6: "Left Top",
+                7: "Top Left",
+            }
+        },
+    }
+
+    def get_position_label(map_key, pos):
+        try:
+            info = map_position_mappings.get(map_key, None)
+            if info and isinstance(pos, int):
+                return info["positions"].get(pos, str(pos))
+        except Exception:
+            pass
+        return str(pos)
+
+    # Prefer friendly display name when available; do NOT show raw map keys
+    try:
+        map_info = map_position_mappings.get(str(map_name), None)
+        display_map = map_info.get("display") if map_info else None
+    except Exception:
+        display_map = None
+    # If no friendly name is available, show a generic placeholder (do not expose raw map key)
+    display_map = display_map or "Unknown Map"
+    safe_map = html.escape(str(display_map))
+
+    # Build player HTML rows
+    player_html = ""
+    if players_info:
+        for p in players_info:
+            name = p.get("name", "Unknown")
+            # Decode octal escapes in the name
+            name = decode_octal_escapes(name)
+            name = html.escape(name)
+            
+            elo = p.get("elo", "N/A")
+            if isinstance(elo, (int, float)):
+                elo_text = f"{elo:.0f}"
+            else:
+                elo_text = html.escape(str(elo))
+            
+            start = p.get("start_position", "-")
+            color_idx = p.get("color", None)
+            try:
+                color_hex = color_map.get(int(color_idx), "#CCCCCC")
+            except Exception:
+                color_hex = "#CCCCCC"
+
+            faction = p.get("faction", None)
+            faction_text = html.escape(str(faction)) if faction is not None else ""
+
+            # Map start position to human-readable label where possible
+            try:
+                start_int = int(start)
+            except Exception:
+                start_int = None
+            if start_int is not None:
+                start_label = get_position_label(str(map_name), start_int)
+            else:
+                start_label = str(start)
+
+            # Only show start position in the left meta; faction is represented by the flag image
+            left_meta = f"Start: {html.escape(str(start_label))}"
+            # Determine flag path, if available
+            flag_filename = None
+            try:
+                faction_val = p.get("faction", None)
+                if faction_val is not None:
+                    faction_int = int(faction_val)
+                    flag_filename = flag_map.get(faction_int)
+            except Exception:
+                flag_filename = None
+
+            flag_html = ""
+            if flag_filename:
+                # Use a relative path to the Flags folder (assumes HTML is in project root)
+                flag_path = os.path.join("Flags", flag_filename).replace('\\', '/')
+                flag_html = f"<img class=\"flag\" src=\"{flag_path}\" alt=\"flag\">"
+                # render player block with left column (name + meta) and right column (elo)
+                player_html += f"""
+            <div class="player">
+                {flag_html}
+                <div class="player-left">
+                    <div class="name-box" style="border-color:{color_hex};">{name}</div>
+                    <div class="meta"><div class="left">{left_meta}</div><div class="elo">{elo_text}</div></div>
+                </div>
+            </div>
+"""
+    else:
+        player_html = """
+      <div class="player">
+        <div class="name-box" style="background:#666; color:#fff;">No players</div>
+      </div>
+"""
+
+    # Compute container width so it fits the player boxes snugly but doesn't leave excessive empty space.
+    try:
+        players_count = len(players_info) if players_info else 1
+    except Exception:
+        players_count = 1
+
+    # Measurements (keep in sync with CSS .player flex-basis and gaps)
+    player_box_width = 260  # matches flex-basis used for .player (includes padding/border due to box-sizing)
+    gap = 12
+    padding = 18  # left+right padding from .wrap (wrap uses border-box)
+
+    total_width = players_count * player_box_width + max(0, players_count - 1) * gap
+    # Add a small extra margin to account for shadows/borders and rounding
+    extra_margin = 24
+    total_width += extra_margin
+    # Clamp to reasonable bounds so overlay isn't absurdly small or huge
+    min_width = 420
+    max_width = 1200
+    wrap_width = int(max(min_width, min(total_width, max_width)))
+
+    html_content = f"""<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="{int(refresh_interval)}">
+    <title>Match Overlay</title>
+    <style>
+        /* Futuristic / modern styles */
+        body {{ font-family: 'Orbitron', 'Segoe UI', Tahoma, Arial, sans-serif; background: transparent; color: #e6f0ff; }}
+        .wrap {{ padding: 18px; box-sizing: border-box; background: rgba(8,10,14,0.35); border-radius: 12px; backdrop-filter: blur(6px); }}
+        .map {{ font-size: 30px; font-weight: 900; color: #9ff0ff; margin: 0 0 12px 0; letter-spacing: 0.6px; text-align: center; /* center the map title */
+             /* darker outline using multiple shadows for better contrast */
+             text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 4px 12px rgba(0,0,0,0.6); }}
+          /* Force player boxes to sit horizontally next to each other.
+              The outer container width is computed to fit the players, so
+              we don't need a horizontal scrollbar. */
+          .players {{ display: flex; gap: 12px; flex-wrap: nowrap; overflow: visible; }}
+        .player {{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding: 10px; border-radius: 10px; flex: 0 0 260px; display:flex; align-items:center; gap:10px; border:1px solid rgba(160,220,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.6); overflow: hidden; box-sizing: border-box; }}
+        .flag {{ width:28px; height:18px; vertical-align:middle; margin-right:8px; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,0.6); }}
+        .player-left {{ display:flex; flex-direction:column; flex:1; min-width:0 }}
+        .name-box {{ display:inline-block; padding:8px 12px; border-radius:8px; font-weight:800; color:#fff; background:transparent; border:2px solid rgba(255,255,255,0.04); backdrop-filter: blur(2px); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+        .meta {{ margin-top:8px; font-size:13px; color:#cfd8e6; display:flex; justify-content:space-between; align-items:center }}
+        .meta .left {{ font-size:13px; color:#cfd8e6; }}
+        .meta .elo {{ font-size:20px; font-weight:900; color:#ffffff; padding:6px 10px; border-radius:8px; background:linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); box-shadow: 0 4px 12px rgba(0,0,0,0.6); }}
+    </style>
+</head>
+<body>
+    <div class="wrap" style="width:{wrap_width}px;">
+        <div class="map">{safe_map}</div>
+        <div class="players">{player_html}
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    html_path = os.path.join(output_dir, html_name)
+
+    try:
+        with open(html_path, 'w', encoding='utf-8') as hf:
+            hf.write(html_content)
+        print(f"Webpage generated successfully: {os.path.abspath(html_path)}")
+        return html_path
+    except Exception as e:
+        print(f"ERROR writing HTML overlay: {e}")
+        return None
