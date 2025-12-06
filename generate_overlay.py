@@ -219,8 +219,8 @@ def generate_match_webpage(players_info, map_name, output_dir=None, refresh_inte
         "MOBIUS_RED_ALERT_MULTIPLAYER_COMMUNITY_2_MAP": {
             "display": "Tournament Arena",
             "positions": {
-                0: "Top Left",
-                1: "Bot Right",
+                0: "Bot Right",
+                1: "Top Left",
             }
         },
         "MOBIUS_RED_ALERT_MULTIPLAYER_22_MAP": {
@@ -433,4 +433,78 @@ def generate_match_webpage(players_info, map_name, output_dir=None, refresh_inte
         return html_path
     except Exception as e:
         print(f"ERROR writing HTML overlay: {e}")
+        return None
+
+
+def hide_overlay(output_dir=None, html_name="match_info.html"):
+    """Overwrite the overlay HTML with a minimal fully-transparent page.
+
+    This keeps the same filename so OBS Browser sources remain pointed to the
+    same path but nothing is visible on the stream until the next match.
+    """
+    if output_dir is None:
+        output_dir = os.path.dirname(__file__)
+
+        # Create a minimal transparent page that still runs the JS poller.
+        # The poller will fetch the same file every 2s and inject any new map/players
+        # HTML when a match overlay is written, so OBS will update automatically.
+        html = """<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Overlay Hidden</title>
+    <style>
+        html,body{height:100%;background:transparent!important;margin:0;padding:0}
+        .map{display:none}
+        .players{display:none}
+    </style>
+</head>
+<body>
+    <div class="map"></div>
+    <div class="players"></div>
+    <script>
+    (function(){
+        const pollInterval = 2000; // ms
+        async function fetchAndUpdate(){
+            try{
+                const url = window.location.href.split('#')[0].split('?')[0] + '?_=' + Date.now();
+                const res = await fetch(url, {cache: 'no-store'});
+                if(!res.ok) return;
+                const text = await res.text();
+                // Try to extract the map/players sections from the fetched HTML
+                const mapMatch = text.match(/<div class=\"map\">([\s\S]*?)<\/div>/i);
+                const playersMatch = text.match(/<div class=\"players\">([\s\S]*?)<\/div>/i);
+                if(mapMatch && playersMatch){
+                    const curMap = document.querySelector('.map');
+                    const curPlayers = document.querySelector('.players');
+                    if(curMap && curPlayers){
+                        const newMapHtml = mapMatch[1];
+                        const newPlayersHtml = playersMatch[1];
+                        // If found, replace DOM and make visible
+                        if(curMap.innerHTML !== newMapHtml) curMap.innerHTML = newMapHtml;
+                        if(curPlayers.innerHTML !== newPlayersHtml) curPlayers.innerHTML = newPlayersHtml;
+                        curMap.style.display = '';
+                        curPlayers.style.display = '';
+                    }
+                }
+            }catch(e){/* ignore */}
+        }
+        setInterval(fetchAndUpdate, pollInterval);
+        // also run immediately once
+        fetchAndUpdate();
+    })();
+    </script>
+</body>
+</html>
+"""
+
+    path = os.path.join(output_dir, html_name)
+    try:
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(html)
+        print(f"Overlay hidden: {os.path.abspath(path)}")
+        return path
+    except Exception as e:
+        print(f"ERROR writing hidden overlay: {e}")
         return None

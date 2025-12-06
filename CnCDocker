@@ -64,7 +64,7 @@ def extract_steam_id():
 def load_settings():
     """Load settings or create defaults."""
     if not os.path.exists(SETTINGS_FILE):
-        settings = {"cnc_path": DEFAULT_PATH}
+        settings = {"cnc_path": DEFAULT_PATH, "close_overlay_on_match_complete": False}
         save_settings(settings)
     else:
         with open(SETTINGS_FILE, "r") as f:
@@ -150,5 +150,14 @@ btn_stop.pack(pady=10)
 
 btn_update = tk.Button(root, text="Update C&C Path", width=20, command=select_cnc_path)
 btn_update.pack(pady=10)
+
+# Checkbox: Close overlay when match complete
+close_var = tk.BooleanVar(value=settings.get("close_overlay_on_match_complete", False))
+def _on_close_var_changed():
+    settings["close_overlay_on_match_complete"] = bool(close_var.get())
+    save_settings(settings)
+
+chk_close = tk.Checkbutton(root, text="Close overlay when match complete", variable=close_var, command=_on_close_var_changed)
+chk_close.pack(pady=6)
 
 root.mainloop()

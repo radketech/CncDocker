@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 import requests
-from generate_overlay import generate_match_webpage
+from generate_overlay import generate_match_webpage, hide_overlay
 
 # Shared event imported into main script
 stop_log_event = threading.Event()
@@ -73,6 +73,16 @@ def tail_log_file(filepath, output_dir=None):
     block_size = 20480  # 20 KB
     last_position = 0  # Track position to avoid re-reading
 
+    overlay_hidden = False
+    def _delayed_hide(out_dir):
+        # Sleep and then attempt to hide the overlay
+        time.sleep(5)
+        try:
+            hide_overlay(output_dir=out_dir)
+            print("DEBUG: overlay hidden after match end")
+        except Exception as e:
+            print("ERROR hiding overlay:", e)
+
     while not stop_log_event.is_set():
         try:
             with open(filepath, "rb") as f:
@@ -90,6 +100,7 @@ def tail_log_file(filepath, output_dir=None):
                     f.seek(last_position)
                     data = f.read().decode("utf-8", errors="ignore")
                     
+                    # Detect match start
                     if search_text.lower() in data.lower():
                         print("DEBUG: FOUND QUICKMATCH!")
                         
@@ -139,6 +150,8 @@ def tail_log_file(filepath, output_dir=None):
                                                         try:
                                                             webpage_path = generate_match_webpage(players_info, map_name, output_dir=output_dir)
                                                             print(f"Webpage generated: {webpage_path}")
+                                                            # reset overlay_hidden flag when a new match overlay is generated
+                                                            overlay_hidden = False
                                                         except Exception as e:
                                                             print("ERROR generating webpage:", e)
                                                     except Exception as e:
@@ -151,6 +164,23 @@ def tail_log_file(filepath, output_dir=None):
                                     print(f"WARNING: Could not parse match ID from line: {line}")
                                 break
                     
+                    # Detect match end lines (e.g., a player being removed indicates match end)
+                    if "removed player" in data.lower():
+                        # Load settings to check whether we should close overlay on match complete
+                        try:
+                            settings = {}
+                            if os.path.exists("settings.json"):
+                                with open("settings.json", "r", encoding="utf-8") as sf:
+                                    settings = json.load(sf)
+                        except Exception:
+                            settings = {}
+
+                        if settings.get("close_overlay_on_match_complete", False) and not overlay_hidden:
+                            print("DEBUG: Detected 'Removed player' and setting enabled — scheduling overlay hide in 5s")
+                            overlay_hidden = True
+                            t = threading.Thread(target=_delayed_hide, args=(output_dir,), daemon=True)
+                            t.start()
+
                     last_position = file_size
 
         except Exception as e:

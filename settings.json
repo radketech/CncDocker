@@ -1,3 +1,4 @@
 {
-    "cnc_path": "C:/Program Files (x86)/Steam/steamapps/common/CnCRemastered"
+    "cnc_path": "C:/Program Files (x86)/Steam/steamapps/common/CnCRemastered",
+    "close_overlay_on_match_complete": true
 }
